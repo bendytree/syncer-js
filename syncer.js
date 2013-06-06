@@ -4,26 +4,37 @@
     "use strict";
     
     setExport(function(obj){
+                
+        // helpful functions
+        var myType = function(o){
+            if (typeof o === 'undefined')
+                return 'undefined';
+            if (o === null)
+                return 'null';
+            if (Object.prototype.toString.call(o) === '[object Array]')
+                return 'array';
+            return typeof o;
+        };
+        
+        var validate = function(o){
+            var type = myType(o);
+            
+            // Only objects allowed
+            if (type !== 'object')
+                throw "syncer requires an object in the constructor. Your passed a "+type;
+        };
+        
+        var isTypePrimitive = function(type) {
+            return ['string', 'boolean', 'number'].indexOf(type) >= 0;
+        }
+            
         return new (function(){
+            
+            // Validate
+            validate(obj);
             
             // Expose a reference
             this.obj = obj;
-            
-            // Validation
-            var validateRootObject = function(o){
-                // Only objects allowed
-                if (typeof o !== 'object')
-                    throw "syncer requires an object in the constructor. Your passed a "+(typeof o);
-                
-                // Object must be truthy
-                if (!o)
-                    throw "syncer requires an object in the constructor. Your passed null.";
-            
-                // No arrays allowed
-                if (Object.prototype.toString.call(o) === '[object Array]')
-                    throw "syncer requires an object in the constructor. Your passed an array.";
-            };
-            validateRootObject(obj);
             
             // Initialize local variables
             var callbacks = [];
@@ -43,19 +54,16 @@
                 }
             };
             
-            // Other helpful functions
-            var isTypePrimitive = function(type) {
-                return ['string', 'boolean', 'number'].indexOf(type) >= 0;
-            }
-            
+            // Setup trigger registration
             this.on = function(key, callback) {
                 callbacks.push({key: key, callback: callback});
             };
             
+            // Allow the object to be updated
             this.update = function(newObj){
                 
                 // Validate the new data
-                validateRootObject(newObj);
+                validate(newObj);
                 
                 // Restart triggers
                 queuedTriggers = [];
@@ -72,14 +80,14 @@
                     var newVal = newObj[key];
                     
                     // Get the types
-                    var oldType = typeof oldVal;
-                    var newType = typeof newVal;
+                    var oldType = myType(oldVal);
+                    var newType = myType(newVal);
                     
                     // What has changed?
                     var typesChanged = oldType != newType;
-                    var isPrimitive = isTypePrimitive(newType);
-                    var primitiveChanged = isPrimitive && (typesChanged || oldVal != newVal);
-                    var complexChanged = !isPrimitive && typesChanged;
+                    var primitiveChanged = isTypePrimitive(newType) && (typesChanged || oldVal != newVal);
+                    
+                    var objectChanged = !isPrimitive && typesChanged;
                     
                     if(primitiveChanged || complexChanged)
                     {
