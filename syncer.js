@@ -29,33 +29,36 @@
             var callbacks = [];
             var queuedTriggers = [];
             
-            // // Setup trigger queueing
-            // var queueTrigger = function(key, val)
-            // {
-            //     for(var i=0; i<callbacks.length; i++)
-            //     {
-            //         if(callbacks[i].key === key)
-            //         {
-            //             pendingTriggers.push({
-            //                 callback: callbacks[i].callback,
-            //                 args: [val]
-            //             });
-            //         }
-            //     }
-            // };
+            // Setup trigger queueing
+            var queueTrigger = function(key, val) {
+                for(var i=0; i<callbacks.length; i++)
+                {
+                    if(callbacks[i].key === key)
+                    {
+                        queuedTriggers.push({
+                            callback: callbacks[i].callback,
+                            args: [val]
+                        });
+                    }
+                }
+            };
             
-            // this.on = function(key, callback){
-            //     callbacks.push({key: key, callback: callback});
-            // };
+            // Other helpful functions
+            var isTypePrimitive = function(type) {
+                return ['string', 'boolean', 'number'].indexOf(type) >= 0;
+            }
             
+            this.on = function(key, callback) {
+                callbacks.push({key: key, callback: callback});
+            };
             
             this.update = function(newObj){
                 
                 // Validate the new data
                 validateRootObject(newObj);
                 
-                
-                // queuedTriggers = [];
+                // Restart triggers
+                queuedTriggers = [];
                 
                 // Add and update values from the new object
                 var newKeys = [];
@@ -64,13 +67,27 @@
                     // Track new keys so we know which old ones to delete later
                     newKeys.push(key);
                     
-                    // Has the value changed?
+                    // Get the values
+                    var oldVal = obj[key];
                     var newVal = newObj[key];
-                    if(obj[key] != newVal)
+                    
+                    // Get the types
+                    var oldType = typeof oldVal;
+                    var newType = typeof newVal;
+                    
+                    // What has changed?
+                    var typesChanged = oldType != newType;
+                    var isPrimitive = isTypePrimitive(newType);
+                    var primitiveChanged = isPrimitive && (typesChanged || oldVal != newVal);
+                    var complexChanged = !isPrimitive && typesChanged;
+                    
+                    if(primitiveChanged || complexChanged)
                     {
                         // Save the new value
                         obj[key] = newVal;
-                        //queueTrigger(key, newVal);
+                        
+                        // Queue a notification that this changed
+                        queueTrigger(key, newVal);
                     }
                 }
                 
@@ -83,14 +100,15 @@
                         // Delete the old value
                         delete obj[key];
                         
-                        //queueTrigger(key, undefined);
+                        // Queue a notification that this was deleted
+                        queueTrigger(key);
                     }
                 }
                 
-                // for(var i=0; i<queuedTriggers.length; i++){
-                //     var trigger = queuedTriggers[i];
-                //     trigger.callback.apply(obj, trigger.args);
-                // }
+                for(var i=0; i<queuedTriggers.length; i++){
+                    var trigger = queuedTriggers[i];
+                    trigger.callback.apply(obj, trigger.args);
+                }
             };
         })();
     });
