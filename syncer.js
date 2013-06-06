@@ -85,11 +85,10 @@
                     
                     // What has changed?
                     var typesChanged = oldType != newType;
-                    var primitiveChanged = isTypePrimitive(newType) && (typesChanged || oldVal != newVal);
+                    var valuesChanged = oldVal != newVal;
+                    var changed = typesChanged || (valuesChanged && 'string,number,boolean'.indexOf(newType) >= 0);
                     
-                    var objectChanged = !isPrimitive && typesChanged;
-                    
-                    if(primitiveChanged || complexChanged)
+                    if(changed)
                     {
                         // Save the new value
                         obj[key] = newVal;
