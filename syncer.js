@@ -4,6 +4,68 @@
     "use strict";
     
     setExport(function(obj){
+            
+        // Trigger manager
+        var TriggerManager = function(callbacks){
+            return new (function(){  
+                
+                var triggers = [];
+                          
+                // Setup trigger queueing
+                this.queue = function(path) {
+                    triggers.push(path);
+                };
+                
+                // Firing all the triggers
+                this.fire = function(obj) {
+                    
+                    // Expand triggers (ie. user.name => user)
+                    var allTriggers = [];
+                    for(var i=0; i<triggers.length; i++)
+                    {
+                        // Original trigger (ie. user.name)
+                        var trigger = triggers[i];
+                        
+                        // Break it into (user, name)
+                        var pieces = trigger.split('.');
+                        for(var j=0; j<pieces.length; j++)
+                        {
+                            // recreate each length of the trigger
+                            var subTrigger = pieces.slice(0, j+1).join('.');
+                            
+                            // if the trigger hasn't been added yet, add it
+                            if(allTriggers.indexOf(subTrigger) == -1)
+                                allTriggers.push(subTrigger);
+                        }
+                    }
+                    
+                    // Bail if no triggers
+                    if(allTriggers.length == 0)
+                        return;
+                    
+                    // Add the wildcard
+                    allTriggers.push('*');
+                    
+                    // Trigger all callbacks for each path
+                    for(var i=0; i<allTriggers.length; i++)
+                    {
+                        // Find callbacks for each trigger
+                        var trigger = allTriggers[i];
+                        for(var j=0; j<callbacks.length; j++)
+                        {
+                            // If the callback matches the trigger, fire
+                            var callback = callbacks[j];
+                            if(callback.path === trigger)
+                            {
+                                callback.callback();
+                            }
+                        }
+                    }
+                };
+                
+                
+            })();
+        };
                 
         // helpful functions
         var myType = function(o){
@@ -26,8 +88,8 @@
         
         var isTypePrimitive = function(type) {
             return ['string', 'boolean', 'number'].indexOf(type) >= 0;
-        }
-            
+        };
+        
         return new (function(){
             
             // Validate
@@ -38,46 +100,21 @@
             
             // Initialize local variables
             var callbacks = [];
-            var queuedTriggers = [];
+            var triggers;
             
-            // Setup trigger queueing
-            var queueTrigger = function(key, val) {
-                for(var i=0; i<callbacks.length; i++)
-                {
-                    if(callbacks[i].key === key)
-                    {
-                        queuedTriggers.push({
-                            callback: callbacks[i].callback,
-                            args: [val]
-                        });
-                    }
-                }
-            };
-            
-            // Setup trigger registration
-            this.on = function(key, callback) {
-                callbacks.push({key: key, callback: callback});
-            };
-            
-            // Allow the object to be updated
-            this.update = function(newObj){
-                
-                // Validate the new data
-                validate(newObj);
-                
-                // Restart triggers
-                queuedTriggers = [];
+            var update = function(path, oldO, newO){
                 
                 // Add and update values from the new object
                 var newKeys = [];
-                for(var key in newObj)
+                for(var key in newO)
                 {
                     // Track new keys so we know which old ones to delete later
                     newKeys.push(key);
                     
                     // Get the values
-                    var oldVal = obj[key];
-                    var newVal = newObj[key];
+                    var oldVal = oldO[key];
+                    var newVal = newO[key];
+                    var newPath = path ? (path+'.'+key) : key;
                     
                     // Get the types
                     var oldType = myType(oldVal);
@@ -88,35 +125,58 @@
                     var valuesChanged = oldVal != newVal;
                     var changed = typesChanged || (valuesChanged && 'string,number,boolean'.indexOf(newType) >= 0);
                     
-                    if(changed)
+                    if(oldType === 'object' && newType === 'object')
+                    {
+                        // Both are objects, compare them
+                        update(newPath, oldVal, newVal);
+                    }
+                    else if(changed)
                     {
                         // Save the new value
-                        obj[key] = newVal;
+                        oldO[key] = newVal;
                         
                         // Queue a notification that this changed
-                        queueTrigger(key, newVal);
+                        triggers.queue(newPath, newVal);
                     }
                 }
                 
                 // Delete objects from the old object
-                for(var key in obj)
+                for(var key in oldO)
                 {
                     // Is this key missing from the new object?
                     if(newKeys.indexOf(key) === -1)
                     {
                         // Delete the old value
-                        delete obj[key];
+                        delete oldO[key];
                         
                         // Queue a notification that this was deleted
-                        queueTrigger(key);
+                        var newPath = path ? (path+'.'+key) : key;
+                        triggers.queue(newPath);
                     }
                 }
-                
-                for(var i=0; i<queuedTriggers.length; i++){
-                    var trigger = queuedTriggers[i];
-                    trigger.callback.apply(obj, trigger.args);
-                }
             };
+            
+            // Setup trigger registration
+            this.on = function(path, callback) {
+                callbacks.push({path: path, callback: callback});
+            };
+            
+            // Allow the object to be updated
+            this.update = function(newObj){
+                
+                // Validate the new data
+                validate(newObj);
+                
+                // Restart triggers
+                triggers = new TriggerManager(callbacks);
+                
+                // Start the update
+                update('', obj, newObj);
+                
+                // Run the triggers
+                triggers.fire(obj);
+            };
+            
         })();
     });
 
