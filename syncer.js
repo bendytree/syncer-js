@@ -57,7 +57,14 @@
                             var callback = callbacks[j];
                             if(callback.path === trigger)
                             {
-                                callback.callback();
+                                try
+                                {
+                                    callback.callback();
+                                }
+                                catch(ex)
+                                {
+                                    
+                                }
                             }
                         }
                     }
@@ -75,6 +82,8 @@
                 return 'null';
             if (Object.prototype.toString.call(o) === '[object Array]')
                 return 'array';
+            if (Object.prototype.toString.call(o) === '[object Date]')
+                return 'date';
             return typeof o;
         };
         
@@ -87,7 +96,7 @@
         };
         
         var isTypePrimitive = function(type) {
-            return ['string', 'boolean', 'number'].indexOf(type) >= 0;
+            return ['string', 'boolean', 'number', 'date'].indexOf(type) >= 0;
         };
         
         return new (function(){
@@ -123,7 +132,7 @@
                     // What has changed?
                     var typesChanged = oldType != newType;
                     var valuesChanged = oldVal != newVal;
-                    var changed = typesChanged || (valuesChanged && 'string,number,boolean'.indexOf(newType) >= 0);
+                    var changed = typesChanged || (valuesChanged && 'string,number,boolean,date'.indexOf(newType) >= 0);
                     
                     if(oldType === 'object' && newType === 'object')
                     {

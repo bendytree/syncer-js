@@ -4,7 +4,7 @@ var should = require('should');
 var syncer = require('../syncer');
 
 
-describe('objects to', function(){
+describe('object to', function(){
     
     var s;
     
@@ -37,6 +37,11 @@ describe('objects to', function(){
     it('null triggers', function(done){
         s.on('user', function(){ done(); });
         s.update({user:null});
+    });
+    
+    it('date triggers', function(done){
+        s.on('user', function(){ done(); });
+        s.update({user:new Date()});
     });
     
     it('similar object does not trigger', function(){

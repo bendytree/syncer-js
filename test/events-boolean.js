@@ -28,6 +28,11 @@ describe('boolean to', function(){
         s.update({smart:'kinda'});
     });
     
+    it('date triggers', function(done){
+        s.on('smart', function(){ done(); });
+        s.update({smart:new Date()});
+    });
+    
     it('number triggers', function(done){
         s.on('smart', function(){ done(); });
         s.update({smart:11});

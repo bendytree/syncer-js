@@ -28,6 +28,11 @@ describe('null to', function(){
         s.update({x:11});
     });
     
+    it('date triggers', function(done){
+        s.on('x', function(){ done(); });
+        s.update({x:new Date()});
+    });
+    
     it('object triggers', function(done){
         s.on('x', function(){ done(); });
         s.update({x:{}});

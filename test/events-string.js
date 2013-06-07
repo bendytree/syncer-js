@@ -33,6 +33,11 @@ describe('string to', function(){
         s.update({name:true});
     });
     
+    it('date triggers', function(done){
+        s.on('name', function(){ done(); });
+        s.update({name:new Date()});
+    });
+    
     it('object triggers', function(done){
         s.on('name', function(){ done(); });
         s.update({name:{}});

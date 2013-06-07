@@ -29,6 +29,11 @@ describe('array to', function(){
         s.update({users:true});
     });
     
+    it('date triggers', function(done){
+        s.on('users', function(){ done(); });
+        s.update({users:new Date()});
+    });
+    
     it('object triggers', function(done){
         s.on('users', function(){ done(); });
         s.update({users:{}});

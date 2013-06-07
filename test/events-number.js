@@ -33,6 +33,11 @@ describe('number to', function(){
         s.update({age:true});
     });
     
+    it('date triggers', function(done){
+        s.on('age', function(){ done(); });
+        s.update({age:new Date()});
+    });
+    
     it('object triggers', function(done){
         s.on('age', function(){ done(); });
         s.update({age:{}});
