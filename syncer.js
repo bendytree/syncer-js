@@ -139,6 +139,7 @@
                         // Both are objects, compare them
                         update(newPath, oldVal, newVal);
                     }
+                    ...
                     else if(changed)
                     {
                         // Save the new value
