@@ -48,7 +48,7 @@ describe('array items', function(){
         calls.should.equal(1);
     });
     
-    it('removing from 2 triggers', function(done){
+    it('removing from 2 triggers', function(){
         var calls = 0;
         var s = syncer({users:[{name:'josh'},{name:'sunny'}]});
         s.on('users', function(){ calls += 1; });

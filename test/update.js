@@ -41,4 +41,16 @@ describe('update', function(){
         s.obj.name.should.equal('y');
     });
     
+    it('adds new sub objects', function(){
+        var s = syncer({});
+        s.update({user:{name:'josh'}});
+        s.obj.user.name.should.equal('josh');
+    });
+    
+    it('removes old sub objects', function(){
+        var s = syncer({user:{name:'josh'}});
+        s.update({});
+        (typeof s.obj.user).should.equal('undefined');
+    });
+    
 });

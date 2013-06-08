@@ -9,15 +9,15 @@
         var TriggerManager = function(callbacks){
             return new (function(){  
                 
-                var triggers = [];
+                var callbacks = [];
                           
-                // Setup trigger queueing
-                this.queue = function(path) {
-                    triggers.push(path);
+                // Setup trigger registration
+                this.on = function(path, callback) {
+                    callbacks.push({path: path, callback: callback});
                 };
                 
                 // Firing all the triggers
-                this.fire = function(obj) {
+                this.fire = function(obj, triggers) {
                     
                     // Expand triggers (ie. user.name => user)
                     var allTriggers = [];
@@ -87,104 +87,166 @@
             return typeof o;
         };
         
-        var validate = function(o){
+        var validateRoot = function(o){
             var type = myType(o);
             
             // Only objects allowed
             if (type !== 'object')
-                throw "syncer requires an object in the constructor. Your passed a "+type;
+                throw "Root must be an object. Your passed "+type;
         };
         
         var isTypePrimitive = function(type) {
             return ['string', 'boolean', 'number', 'date'].indexOf(type) >= 0;
         };
         
+        var getChanges = function (oldVal, newVal)
+        {
+            // Get the types
+            var oldType = myType(oldVal);
+            var newType = myType(newVal);
+            
+            // What has changed?
+            var changes = [];
+            var typesChanged = oldType != newType;
+            var valuesChanged = oldVal != newVal;
+            var changed = typesChanged || (valuesChanged && 'string,number,boolean,date'.indexOf(newType) >= 0);
+            
+            if(oldType === 'object' || newType === 'object')
+            {
+                if(oldType !== 'object')
+                {
+                    //Need a change for each property in NEW, so compare against empty
+                    oldVal = {};
+                }
+                
+                if(newType !== 'object')
+                {
+                    //Need a change for each property in OLD, so compare against empty
+                    newVal = {};
+                }
+            
+                // Both are objects, compare them
+                var c = getChanges_objects(oldVal, newVal);
+                changes.push.apply(changes, c);
+            }
+
+            if(oldType === 'array' && newType === 'array')
+            {
+                changed = !areArraysSame(oldVal, newVal);
+            }
+
+            if(changed) 
+            {
+                // root changed
+                changes.push('');
+            }
+            
+            return changes;
+        };
+        
+        var getChanges_objects = function (oldO, newO)
+        {
+            var changes = [];
+            
+            // Add and update values from the new object
+            var newKeys = [];
+            for(var key in newO)
+            {
+                // Track new keys so we know which old ones to delete later
+                newKeys.push(key);
+                
+                // Get the values
+                var oldVal = oldO[key];
+                var newVal = newO[key];
+                
+                // Get the changes
+                var keyChanges = getChanges(oldVal, newVal);
+                
+                // Save the changes with our current key
+                for(var i=0; i<keyChanges.length; i++)
+                {
+                    var keyChange = keyChanges[i];
+                    changes.push(keyChange ? (key+'.'+keyChange) : key);
+                }
+            }
+            
+            // Delete properties from the old object
+            for(var key in oldO)
+            {
+                // Is this key missing from the new object?
+                if(newKeys.indexOf(key) === -1)
+                {
+                    // Queue a notification that this was deleted
+                    changes.push(key);
+                    
+                    // Fire changes for the deleted object
+                    var removalChanges = getChanges(oldO[key], undefined);
+                    for(var i=0; i<removalChanges.length; i++)
+                    {
+                        var removalChange = removalChanges[i];
+                        changes.push(removalChange ? (key+'.'+removalChange) : key);
+                    }
+                }
+            }
+            
+            return changes;
+        };        
+        
+        var areArraysSame = function(a, b){
+            if(a.length !== b.length)
+                return false;
+            
+            for(var i=0; i<a.length; i++){
+                var changes = getChanges(a[i], b[i]);
+                if(changes > 0)
+                    return false;
+            }
+            
+            return true;
+        };
+        
+        var copyProperties = function(obj, newObj){
+            //delete all old props
+            for(var key in obj){
+                delete obj[key];
+            }
+            
+            //copy new values onto old
+            for(var key in newObj){
+                obj[key] = newObj[key];
+            }
+        };
+        
         return new (function(){
             
-            // Validate
-            validate(obj);
+            // Validate (root must be an object)
+            validateRoot(obj);
             
             // Expose a reference
             this.obj = obj;
             
             // Initialize local variables
-            var callbacks = [];
-            var triggers;
-            
-            var update = function(path, oldO, newO){
-                
-                // Add and update values from the new object
-                var newKeys = [];
-                for(var key in newO)
-                {
-                    // Track new keys so we know which old ones to delete later
-                    newKeys.push(key);
-                    
-                    // Get the values
-                    var oldVal = oldO[key];
-                    var newVal = newO[key];
-                    var newPath = path ? (path+'.'+key) : key;
-                    
-                    // Get the types
-                    var oldType = myType(oldVal);
-                    var newType = myType(newVal);
-                    
-                    // What has changed?
-                    var typesChanged = oldType != newType;
-                    var valuesChanged = oldVal != newVal;
-                    var changed = typesChanged || (valuesChanged && 'string,number,boolean,date'.indexOf(newType) >= 0);
-                    
-                    if(oldType === 'object' && newType === 'object')
-                    {
-                        // Both are objects, compare them
-                        update(newPath, oldVal, newVal);
-                    }
-                    ...
-                    else if(changed)
-                    {
-                        // Save the new value
-                        oldO[key] = newVal;
-                        
-                        // Queue a notification that this changed
-                        triggers.queue(newPath, newVal);
-                    }
-                }
-                
-                // Delete objects from the old object
-                for(var key in oldO)
-                {
-                    // Is this key missing from the new object?
-                    if(newKeys.indexOf(key) === -1)
-                    {
-                        // Delete the old value
-                        delete oldO[key];
-                        
-                        // Queue a notification that this was deleted
-                        var newPath = path ? (path+'.'+key) : key;
-                        triggers.queue(newPath);
-                    }
-                }
-            };
+            var triggerManager = new TriggerManager();
             
             // Setup trigger registration
             this.on = function(path, callback) {
-                callbacks.push({path: path, callback: callback});
+                triggerManager.on(path, callback);
             };
             
             // Allow the object to be updated
             this.update = function(newObj){
                 
-                // Validate the new data
-                validate(newObj);
+                // Validate (root must be an object)
+                validateRoot(newObj);
                 
-                // Restart triggers
-                triggers = new TriggerManager(callbacks);
+                // Get the changes
+                var changes = getChanges(obj, newObj);
                 
-                // Start the update
-                update('', obj, newObj);
+                // copy the properties to retain root reference
+                copyProperties(obj, newObj);
                 
                 // Run the triggers
-                triggers.fire(obj);
+                triggerManager.fire(obj, changes);
             };
             
         })();
