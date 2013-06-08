@@ -24,7 +24,7 @@ Syncer is a javascript library that sends you notifications when an object graph
 	    address: { zip: '73069' }
 	});
 
-Notice that you are re-setting the object graph and that triggers the events.  For example, changing the original object does not trigger events. That is not the goal of this library.
+Notice that you are updating the root object graph and that triggers the events.  For example, changing the original object does not trigger events. That is not the goal of this library.
 
     var user = { name: 'josh' };
     var s = syncer(user);
@@ -34,3 +34,24 @@ Notice that you are re-setting the object graph and that triggers the events.  F
 
 This becomes useful when you are receiving a stream of data from an api or a web socket and want to be notified of the changes only.
 
+You can also register for the wildcard event which triggers any time any change happens.
+    
+    var s = syncer({});
+
+    s.on("*", function(){
+	    alert('something changed');
+	});
+
+Last off, syncer exposes the object and never changes the root reference. So if you get a handle on the object from elsewhere in the code, you always have a reference to the latest version:
+
+    var s = syncer({name:'josh'});
+
+    alert(s.obj.name); // 'josh'
+
+    var ref = s.obj;
+
+    syncer.update({name:'sunny'});
+
+    alert(ref.name); // 'sunny'
+	
+Tweet at me @BendyTree if you have a question.
