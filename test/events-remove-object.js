@@ -31,13 +31,13 @@ describe('remove object', function(){
         var calls = 0;
         
         var s = syncer({user:{cart:{items:2}}});
-        s.on('*', function(){ calls++; });
+        s.on('*', function(){ calls++; }); //calls 4 times
         s.on('user', function(){ calls++; });
         s.on('user.cart', function(){ calls++; });
         s.on('user.cart.items', function(){ calls++; });
         s.update({});
         
-        calls.should.equal(4);
+        calls.should.equal(7);
     });
     
 });

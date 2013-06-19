@@ -41,24 +41,24 @@ describe('sub objects', function(){
     it('changed double sub object fires all paths', function(){
         var calls = 0;
         var s = syncer({user:{address:{zip:'37212'}}});
-        s.on('*', function(){ calls += 1; });
+        s.on('*', function(){ calls += 1; }); //called 4 times
         s.on('user', function(){ calls += 1; });
         s.on('user.address', function(){ calls += 1; });
         s.on('user.address.zip', function(){ calls += 1; });
         s.update({user:{address:{zip:'90212'}}});
-        calls.should.equal(4);
+        calls.should.equal(7);
     });
     
     it('two changes on double sub object fires all paths once', function(){
         var calls = 0;
         var s = syncer({user:{address:{zip:'37212'}}});
-        s.on('*', function(){ calls += 1; });
+        s.on('*', function(){ calls += 1; }); //fires 5 times
         s.on('user', function(){ calls += 1; });
         s.on('user.address', function(){ calls += 1; });
         s.on('user.address.zip', function(){ calls += 1; });
         s.on('user.address.city', function(){ calls += 1; });
         s.update({user:{address:{zip:'90212', city:'Awesomeville'}}});
-        calls.should.equal(5);
+        calls.should.equal(9);
     });
     
 });

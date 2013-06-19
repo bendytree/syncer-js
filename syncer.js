@@ -55,11 +55,11 @@
                         {
                             // If the callback matches the trigger, fire
                             var callback = callbacks[j];
-                            if(callback.path === trigger)
+                            if(callback.path === trigger || callback.path == '*')
                             {
                                 try
                                 {
-                                    callback.callback();
+                                    callback.callback({path:trigger});
                                 }
                                 catch(ex)
                                 {
@@ -252,5 +252,5 @@
         })();
     });
 
-})(function(x){ module?(module.exports=x):(window.syncer=x)});
+})(function(x){ typeof module == 'undefined'?(window.syncer=x):(module.exports=x)});
 
